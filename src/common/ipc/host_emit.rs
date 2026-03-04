@@ -34,7 +34,9 @@ impl Plugin for HostEmitPlugin {
 }
 
 fn host_emit(trigger: On<HostEmitEvent>, browsers: NonSend<Browsers>) {
-    if let Ok(v) = serde_json::to_value(&trigger.payload) {
+    // trigger.payload is already a JSON string; parse it back to Value so that
+    // emit_event embeds the object directly in JS rather than a quoted string.
+    if let Ok(v) = serde_json::from_str::<serde_json::Value>(&trigger.payload) {
         browsers.emit_event(&trigger.webview, trigger.id.clone(), &v);
     }
 }
