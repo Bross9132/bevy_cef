@@ -29,7 +29,11 @@ impl Plugin for MessageLoopPlugin {
             Some(&mut cef_app),
             std::ptr::null_mut(),
         );
-        assert_eq!(ret, -1, "cannot execute browser process");
+        // ret >= 0 → CEF subprocess (renderer/GPU/etc.); exit with CEF's code.
+        // ret == -1 → browser process; continue.
+        if ret >= 0 {
+            std::process::exit(ret);
+        }
 
         cef_initialize(&args, &mut cef_app);
 
