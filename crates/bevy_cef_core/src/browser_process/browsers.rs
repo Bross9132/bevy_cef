@@ -9,10 +9,9 @@ use bevy::prelude::*;
 use bevy_remote::BrpMessage;
 use cef::{
     Browser, BrowserHost, BrowserSettings, CefString, Client, CompositionUnderline,
-    DictionaryValue, ImplBrowser, ImplBrowserHost, ImplDictionaryValue, ImplFrame, ImplListValue,
-    ImplProcessMessage, ImplRequestContext, MouseButtonType, ProcessId, Range, RequestContext,
-    RequestContextSettings, WindowInfo, browser_host_create_browser_sync, dictionary_value_create,
-    process_message_create,
+    DictionaryValue, ImplBrowser, ImplBrowserHost, ImplDictionaryValue, ImplFrame,
+    ImplRequestContext, MouseButtonType, Range, RequestContext, RequestContextSettings, WindowInfo,
+    browser_host_create_browser_sync, dictionary_value_create,
 };
 use cef_dll_sys::{cef_event_flags_t, cef_mouse_button_type_t};
 #[allow(deprecated)]
@@ -186,19 +185,26 @@ impl Browsers {
     }
 
     pub fn emit_event(&self, webview: &Entity, id: impl Into<String>, event: &serde_json::Value) {
-        if let Some(mut process_message) =
-            process_message_create(Some(&PROCESS_MESSAGE_HOST_EMIT.into()))
-            && let Some(argument_list) = process_message.argument_list()
-            && let Some(browser) = self.browsers.get(webview)
+        let id = id.into();
+        let payload = event.to_string();
+        // Serialize the event id as a JSON string literal so it's safe to embed in JS.
+        let id_json = serde_json::to_string(&id).unwrap_or_else(|_| format!("\"{}\"", id));
+        // Deliver the event by executing JS directly in the browser process.
+        // This avoids sending an IPC process-message to the renderer, which would
+        // require V8 FFI (v8_value_create_object) outside a HandleScope and crash.
+        // window.__cef_listeners is populated by the pure-JS cef.listen() shim.
+        let js = format!(
+            "(function(){{var l=window.__cef_listeners&&window.__cef_listeners[{id_json}];if(typeof l==='function')l({payload});}})()"
+        );
+        if let Some(browser) = self.browsers.get(webview)
             && let Some(frame) = browser.client.main_frame()
         {
-            argument_list.set_string(0, Some(&id.into().as_str().into()));
-            argument_list.set_string(1, Some(&event.to_string().as_str().into()));
-            frame.send_process_message(
-                ProcessId::from(cef_dll_sys::cef_process_id_t::PID_RENDERER),
-                Some(&mut process_message),
+            frame.execute_java_script(
+                Some(&js.as_str().into()),
+                Some(&"cef://bevy/emit".into()),
+                0,
             );
-        };
+        }
     }
 
     pub fn resize(&self, webview: &Entity, size: Vec2) {

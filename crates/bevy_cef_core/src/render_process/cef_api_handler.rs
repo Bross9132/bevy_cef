@@ -1,5 +1,5 @@
-use crate::prelude::{BRP_PROMISES, LISTEN_EVENTS, PROCESS_MESSAGE_BRP, PROCESS_MESSAGE_JS_EMIT};
-use crate::util::{IntoString, v8_value_to_json};
+use crate::prelude::{BRP_PROMISES, PROCESS_MESSAGE_BRP, PROCESS_MESSAGE_JS_EMIT};
+use crate::util::v8_value_to_json;
 use cef::rc::{Rc, RcImpl};
 use cef::{
     CefString, ImplFrame, ImplListValue, ImplProcessMessage, ImplV8Context, ImplV8Handler,
@@ -72,7 +72,6 @@ impl ImplV8Handler for CefApiHandler {
         match name_str.as_str() {
             "__cef_brp" => self.execute_brp(arguments, ret),
             "__cef_emit" => self.execute_emit(arguments),
-            "__cef_listen" => self.execute_listen(arguments),
             _ => 0,
         }
     }
@@ -149,18 +148,4 @@ impl CefApiHandler {
         1
     }
 
-    fn execute_listen(&self, arguments: Option<&[Option<V8Value>]>) -> c_int {
-        if let Some(arguments) = arguments
-            && let Some(Some(id)) = arguments.first()
-            && id.is_string().is_positive()
-            && let Some(Some(callback)) = arguments.get(1)
-            && callback.is_function().is_positive()
-        {
-            LISTEN_EVENTS
-                .lock()
-                .unwrap()
-                .insert(id.string_value().into_string(), callback.clone());
-        }
-        1
-    }
 }

@@ -5,6 +5,7 @@ use cef::*;
 use cef_dll_sys::cef_paint_element_type_t;
 use std::cell::Cell;
 use std::os::raw::c_int;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 pub type TextureSender = Sender<RenderTextureMessage>;
 
@@ -110,6 +111,11 @@ impl ImplRenderHandler for RenderHandlerBuilder {
         width: c_int,
         height: c_int,
     ) {
+        static LOGGED: AtomicBool = AtomicBool::new(false);
+        if !LOGGED.swap(true, Ordering::Relaxed) {
+            let alpha = if width > 0 && height > 0 { Some(unsafe { *buffer.add(3) }) } else { None };
+            info!("[CEF] on_paint first call: {}x{} first_pixel_alpha={:?}", width, height, alpha);
+        }
         let ty = match type_.as_ref() {
             cef_paint_element_type_t::PET_POPUP => RenderPaintElementType::Popup,
             _ => RenderPaintElementType::View,

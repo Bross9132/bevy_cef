@@ -144,6 +144,7 @@ fn create_webview(
                     #[allow(deprecated)]
                     w.raw_window_handle().ok()
                 });
+            info!("[CEF] create_browser: entity={:?} url={} size={:?}", entity, uri.0, size.0);
             browsers.create_browser(
                 entity,
                 &uri.0,

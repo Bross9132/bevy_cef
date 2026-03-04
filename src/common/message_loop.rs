@@ -65,6 +65,15 @@ fn cef_initialize(args: &Args, cef_app: &mut cef::App) {
             .into(),
         #[cfg(all(target_os = "macos", feature = "debug"))]
         browser_subprocess_path: debug_render_process_path().to_str().unwrap().into(),
+        // On Windows, point CEF at the dedicated render-process binary so that
+        // RenderProcessAppBuilder runs in the subprocess (registering window.cef / V8
+        // extensions) instead of re-using the main game.exe with BrowserProcessAppBuilder.
+        #[cfg(target_os = "windows")]
+        browser_subprocess_path: {
+            let mut p = std::env::current_exe().expect("current_exe");
+            p.set_file_name("bevy_cef_render_process.exe");
+            p.to_str().expect("subprocess path utf8").into()
+        },
         #[cfg(any(all(target_os = "macos", feature = "debug"), target_os = "windows"))]
         no_sandbox: true as _,
         windowless_rendering_enabled: true as _,
