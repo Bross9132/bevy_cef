@@ -1,6 +1,6 @@
 use crate::common::{WebviewSize, WebviewSource};
 use crate::prelude::update_webview_image;
-use bevy::input::mouse::MouseWheel;
+use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy::prelude::*;
 use bevy_cef_core::prelude::{Browsers, RenderTextureMessage};
 use std::fmt::Debug;
@@ -102,13 +102,20 @@ fn on_mouse_wheel(
         return;
     };
     for event in er.read() {
+        // CEF's send_mouse_wheel_event expects pixel deltas. Bevy's Line unit
+        // gives 1.0 per notch; scale to match typical browser behaviour (~100px/notch).
+        let scale = match event.unit {
+            MouseScrollUnit::Line => 100.0,
+            MouseScrollUnit::Pixel => 1.0,
+        };
+        let delta = Vec2::new(event.x * scale, event.y * scale);
         for (webview, sprite, webview_size, gtf) in webviews.iter() {
             let Some(pos) = obtain_relative_pos(sprite, webview_size, gtf, &cameras, cursor_pos)
             else {
                 continue;
             };
 
-            browsers.send_mouse_wheel(&webview, pos, Vec2::new(event.x, event.y));
+            browsers.send_mouse_wheel(&webview, pos, delta);
         }
     }
 }
