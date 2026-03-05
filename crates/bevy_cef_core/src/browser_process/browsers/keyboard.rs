@@ -38,33 +38,41 @@ pub fn create_cef_key_event(
     modifiers: u32,
     _input: &ButtonInput<KeyCode>,
     key_event: &KeyboardInput,
-) -> Option<cef::KeyEvent> {
-    let key_type = match key_event.state {
-        // ButtonState::Pressed if input.just_pressed(key_event.key_code) => {
-        //     cef_key_event_type_t::KEYEVENT_RAWKEYDOWN
-        // }
-        ButtonState::Pressed => cef_key_event_type_t::KEYEVENT_CHAR,
-        ButtonState::Released => cef_key_event_type_t::KEYEVENT_KEYUP,
-    };
+) -> Vec<cef::KeyEvent> {
     let windows_key_code = keycode_to_windows_vk(key_event.key_code);
-
+    let native_key_code = to_native_key_code(&key_event.key_code) as _;
     let character = key_event
         .text
         .as_ref()
         .and_then(|text| text.chars().next())
         .unwrap_or('\0') as u16;
 
-    Some(cef::KeyEvent::from(cef_key_event_t {
-        size: core::mem::size_of::<cef_key_event_t>(),
-        type_: key_type,
-        modifiers,
-        windows_key_code,
-        native_key_code: to_native_key_code(&key_event.key_code) as _,
-        character,
-        unmodified_character: character,
-        is_system_key: false as _,
-        focus_on_editable_field: false as _,
-    }))
+    let make = |type_| {
+        cef::KeyEvent::from(cef_key_event_t {
+            size: core::mem::size_of::<cef_key_event_t>(),
+            type_,
+            modifiers,
+            windows_key_code,
+            native_key_code,
+            character,
+            unmodified_character: character,
+            is_system_key: false as _,
+            focus_on_editable_field: false as _,
+        })
+    };
+
+    match key_event.state {
+        ButtonState::Pressed => {
+            // RAWKEYDOWN fires the DOM 'keydown' event; CHAR fires 'keypress' for
+            // text-producing keys (needed for text input fields).
+            let mut events = vec![make(cef_key_event_type_t::KEYEVENT_RAWKEYDOWN)];
+            if character != 0 {
+                events.push(make(cef_key_event_type_t::KEYEVENT_CHAR));
+            }
+            events
+        }
+        ButtonState::Released => vec![make(cef_key_event_type_t::KEYEVENT_KEYUP)],
+    }
 }
 
 // fn is_not_character_key_code(keycode: &KeyCode) -> bool {

@@ -58,7 +58,7 @@ fn apply_on_pointer_move(
     trigger: On<Pointer<Move>>,
     input: Res<ButtonInput<MouseButton>>,
     browsers: NonSend<Browsers>,
-    cameras: Query<(&Camera, &GlobalTransform)>,
+    cameras: Query<(&Camera, &GlobalTransform), With<Camera2d>>,
     webviews: Query<(&Sprite, &WebviewSize, &GlobalTransform)>,
 ) {
     let Some(pos) = obtain_relative_pos_from_trigger(&trigger, &webviews, &cameras) else {
@@ -70,7 +70,7 @@ fn apply_on_pointer_move(
 fn apply_on_pointer_pressed(
     trigger: On<Pointer<Press>>,
     browsers: NonSend<Browsers>,
-    cameras: Query<(&Camera, &GlobalTransform)>,
+    cameras: Query<(&Camera, &GlobalTransform), With<Camera2d>>,
     webviews: Query<(&Sprite, &WebviewSize, &GlobalTransform)>,
 ) {
     let Some(pos) = obtain_relative_pos_from_trigger(&trigger, &webviews, &cameras) else {
@@ -82,7 +82,7 @@ fn apply_on_pointer_pressed(
 fn apply_on_pointer_released(
     trigger: On<Pointer<Release>>,
     browsers: NonSend<Browsers>,
-    cameras: Query<(&Camera, &GlobalTransform)>,
+    cameras: Query<(&Camera, &GlobalTransform), With<Camera2d>>,
     webviews: Query<(&Sprite, &WebviewSize, &GlobalTransform)>,
 ) {
     let Some(pos) = obtain_relative_pos_from_trigger(&trigger, &webviews, &cameras) else {
@@ -95,7 +95,7 @@ fn on_mouse_wheel(
     mut er: MessageReader<MouseWheel>,
     browsers: NonSend<Browsers>,
     webviews: Query<(Entity, &Sprite, &WebviewSize, &GlobalTransform)>,
-    cameras: Query<(&Camera, &GlobalTransform)>,
+    cameras: Query<(&Camera, &GlobalTransform), With<Camera2d>>,
     windows: Query<&Window>,
 ) {
     let Some(cursor_pos) = windows.iter().find_map(|window| window.cursor_position()) else {
@@ -116,7 +116,7 @@ fn on_mouse_wheel(
 fn obtain_relative_pos_from_trigger<E: Debug + Clone + Reflect>(
     trigger: &On<Pointer<E>>,
     webviews: &Query<(&Sprite, &WebviewSize, &GlobalTransform)>,
-    cameras: &Query<(&Camera, &GlobalTransform)>,
+    cameras: &Query<(&Camera, &GlobalTransform), With<Camera2d>>,
 ) -> Option<Vec2> {
     let (sprite, webview_size, gtf) = webviews.get(trigger.entity).ok()?;
     obtain_relative_pos(
@@ -132,7 +132,7 @@ fn obtain_relative_pos(
     sprite: &Sprite,
     webview_size: &WebviewSize,
     transform: &GlobalTransform,
-    cameras: &Query<(&Camera, &GlobalTransform)>,
+    cameras: &Query<(&Camera, &GlobalTransform), With<Camera2d>>,
     cursor_pos: Vec2,
 ) -> Option<Vec2> {
     let size = sprite.custom_size?;
